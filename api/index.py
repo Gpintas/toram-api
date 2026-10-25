@@ -31,7 +31,8 @@ def home():
             "p_android_id": android_id if android_id else "UNKNOWN_DEVICE"
         }
         
-        resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/verify_and_bind_user", headers=headers, json=rpc_payload, timeout=10)
+        resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/check_and_bind_user", headers=headers, json=rpc_payload, timeout=10)
+
         
         if resp.status_code != 200:
             return jsonify({"status": "error", "message": f"Database RPC Error: {resp.text}"})
