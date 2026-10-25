@@ -41,7 +41,7 @@ def home():
         db_id = user.get("id")
         db_password = user.get("password")
         db_status = user.get("status", 1)
-        db_android_id = user.get("android_id")
+        db_android_id = user.get("android_id") or user.get("hwid")
         db_expired_at = user.get("expired_at")
         
         if db_status != 1:
@@ -59,16 +59,20 @@ def home():
             except Exception:
                 pass
                 
-        # Logika Paksa Simpan / Cek Device Binding
+        # Logika Paksa Update ke Kolom android_id DAN hwid Sekaligus
         if not db_android_id or str(db_android_id).strip() == "" or str(db_android_id).lower() == "null":
             if android_id:
-                # Paksa update android_id jika masih kosong
-                requests.patch(
+                update_data = {
+                    "android_id": android_id,
+                    "hwid": android_id
+                }
+                patch_resp = requests.patch(
                     f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
                     headers=headers,
-                    json={"android_id": android_id},
+                    json=update_data,
                     timeout=10
                 )
+                print("PATCH Response:", patch_resp.text) # Cek log Vercel jika masih gagal
         elif db_android_id != android_id and android_id:
             return jsonify({"status": "error", "message": "Perangkat tidak dikenali! Akun terkunci di perangkat lain."})
             
