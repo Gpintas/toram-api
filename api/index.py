@@ -17,7 +17,7 @@ def home():
         android_id = request.form.get('android_id') or request.form.get('hwid') or (request.json.get('android_id') if request.is_json else '')
         
         if not username or not password:
-            return jsonify({"status": "error", "message": "Username dan password wajib diisi!"})
+            return jsonify({"status": "error", "message": "Username lan password wajib diisi!"})
         
         headers = {
             "apikey": SUPABASE_KEY,
@@ -25,11 +25,10 @@ def home():
             "Content-Type": "application/json"
         }
         
-        # Kirim data ke Supabase RPC function
         rpc_payload = {
             "p_username": username,
             "p_password": password,
-            "p_device_id": android_id if android_id else "UNKNOWN_DEVICE"
+            "p_android_id": android_id if android_id else "UNKNOWN_DEVICE"
         }
         
         resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/verify_and_bind_user", headers=headers, json=rpc_payload, timeout=10)
