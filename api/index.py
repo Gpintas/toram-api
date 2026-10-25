@@ -5,7 +5,8 @@ from datetime import datetime
 app = Flask(__name__)
 
 SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXJmeG91YXNoYWlkY25byptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjkzNTMwMywiZXhwIjoyMTA4NTExMzAzfQ.0VURelvbUbVB4fmt1f5r2tbbC5EomPrbMQTtAFPzoCo"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXJmeG91YXNoYWlkY25ieXB0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjkzNTMwMywiZXhwIjoyMTA4NTExMzAzfQ.0VURelvbUbVB4fmt1f5r2tbbC5EomPrbMQTtAFPzoCo"
+
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
