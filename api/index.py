@@ -7,7 +7,7 @@ app = Flask(__name__)
 # Konfigurasi Supabase REST API (Ganti dengan Project URL dan Anon Key kamu jika perlu)
 SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
 # Supabase Anon/Service Role Key (bisa diambil dari Project Settings > API)
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "ISI_ANON_KEY_SUPABASE_DISINI")
+SUPABASE_KEY = "sb_publishable_Izr8_TZCTjUjvXh_NwnWTQ_A-MlUWss"
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
