@@ -1,18 +1,16 @@
 from flask import Flask, request, jsonify
-import psycopg2
+import requests
+import os
 
 app = Flask(__name__)
 
-# Gunakan connection string direct Supabase (Port 5432)
-DATABASE_URL = "postgresql://postgres:Admipoel314%40@db.clyrfxouashaidcnbypt.supabase.co:5432/postgres"
-
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_Izr8_TZCTjUjvXh_NwnWTQ_A-MlUWss")
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'GET':
-        return jsonify({"status": "online", "message": "API Database Aktif!"})
+        return jsonify({"status": "online", "message": "API Supabase Auth Aktif!"})
     
     try:
         username = request.form.get('username') or request.json.get('username') if request.is_json else request.form.get('username')
@@ -22,46 +20,51 @@ def home():
         if not username or not password:
             return jsonify({"status": "error", "message": "Username dan password wajib diisi!"})
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
         
-        # Ambil data user
-        cursor.execute("SELECT id, password, status, android_id FROM users WHERE username = %s", (username,))
-        user = cursor.fetchone()
+        # Ambil data user via REST API
+        resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", headers=headers, timeout=10)
         
-        if not user:
-            cursor.close()
-            conn.close()
+        if resp.status_code != 200:
+            return jsonify({"status": "error", "message": "Gagal terhubung ke database!"})
+            
+        users = resp.json()
+        if not users or len(users) == 0:
             return jsonify({"status": "error", "message": "Username tidak terdaftar!"})
             
-        db_id, db_password, db_status, db_android_id = user
+        user = users[0]
+        db_id = user.get("id")
+        db_password = user.get("password")
+        db_status = user.get("status", 1)
+        db_android_id = user.get("android_id")
         
         if db_status != 1:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Akun Anda telah dinonaktifkan atau diblokir!"})
             
         if password != db_password:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Password salah!"})
             
-        # Jika android_id di database masih kosong/null, otomatis update dengan perangkat saat ini
-        if not db_android_id or db_android_id == "" or db_android_id == "NULL":
-            cursor.execute("UPDATE users SET android_id = %s WHERE id = %s", (android_id, db_id))
-            conn.commit()
+        # Logika Device Binding / HWID
+        if not db_android_id or db_android_id == "" or db_android_id == "NULL" or db_android_id is None:
+            # Update android_id perangkat saat ini jika masih kosong
+            requests.patch(
+                f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
+                headers=headers,
+                json={"android_id": android_id},
+                timeout=10
+            )
         elif db_android_id != android_id:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Perangkat tidak dikenali! Akun terkunci di perangkat lain."})
             
-        cursor.close()
-        conn.close()
-        
         return jsonify({"status": "success", "message": "Login Berhasil!"})
         
     except Exception as e:
-        return jsonify({"status": "error", "message": "DB Error: " + str(e)})
+        return jsonify({"status": "error", "message": "API Error: " + str(e)})
 
 if __name__ == '__main__':
     app.run()
