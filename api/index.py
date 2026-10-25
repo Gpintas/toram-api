@@ -7,14 +7,12 @@ app = Flask(__name__)
 SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXJmeG91YXNoYWlkY25ieXB0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjkzNTMwMywiZXhwIjoyMTA4NTExMzAzfQ.0VURelvbUbVB4fmt1f5r2tbbC5EomPrbMQTtAFPzoCo"
 
-
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'GET':
         return jsonify({"status": "online", "message": "API Supabase Auth Aktif!"})
     
     try:
-        # Menangkap data dari form POST cURL C++
         username = request.form.get('username') or (request.json.get('username') if request.is_json else '')
         password = request.form.get('password') or (request.json.get('password') if request.is_json else '')
         android_id = request.form.get('android_id') or (request.json.get('android_id') if request.is_json else '')
@@ -44,38 +42,34 @@ def home():
         db_password = user.get("password")
         db_status = user.get("status", 1)
         db_android_id = user.get("android_id")
-        db_expired_at = user.get("expired_at") # Format timestamp dari database
+        db_expired_at = user.get("expired_at")
         
-        # 1. Cek Status Akun Aktif / Diblokir
         if db_status != 1:
             return jsonify({"status": "error", "message": "Akun Anda telah dinonaktifkan atau diblokir!"})
             
-        # 2. Cek Password
         if password != db_password:
             return jsonify({"status": "error", "message": "Password salah!"})
             
-        # 3. Cek Masa Aktif (Expired Date Validation)
+        # Cek Masa Aktif
         if db_expired_at:
             try:
-                # Mengubah format tanggal dari database (contoh: 2025-10-25T00:00:00) menjadi objek datetime
                 expire_date = datetime.fromisoformat(db_expired_at.replace('Z', ''))
-                current_date = datetime.now()
-                
-                if current_date > expire_date:
+                if datetime.now() > expire_date:
                     return jsonify({"status": "error", "message": "Masa aktif akun Anda telah kedaluwarsa!"})
             except Exception:
-                pass # Lewati jika format tanggal kosong/tidak valid
+                pass
                 
-        # 4. Logika Device Binding (Android ID / HWID Lock)
-        if not db_android_id or db_android_id == "" or db_android_id == "NULL" or db_android_id == "NONE":
-            if android_id and android_id != "":
+        # Logika Paksa Simpan / Cek Device Binding
+        if not db_android_id or str(db_android_id).strip() == "" or str(db_android_id).lower() == "null":
+            if android_id:
+                # Paksa update android_id jika masih kosong
                 requests.patch(
                     f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
                     headers=headers,
                     json={"android_id": android_id},
                     timeout=10
                 )
-        elif db_android_id != android_id and android_id != "":
+        elif db_android_id != android_id and android_id:
             return jsonify({"status": "error", "message": "Perangkat tidak dikenali! Akun terkunci di perangkat lain."})
             
         return jsonify({"status": "success", "message": "Login Berhasil!"})
