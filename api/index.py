@@ -5,7 +5,8 @@ import json
 
 app = Flask(__name__)
 
-BRIDGE_URL = "http://permanamods.byethost7.com/bridge.php"
+DATABASE_URL = "postgresql://postgres:Admipoel314%40@db.clyrfxouashaidcnbypt.supabase.co:5432/postgres"
+
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
