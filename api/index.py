@@ -9,7 +9,7 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'GET':
-        return jsonify({"status": "online", "message": "API Supabase RPC Aktif!"})
+        return jsonify({"status": "online", "message": "API Supabase RPC v2 Aktif!"})
     
     try:
         username = request.form.get('username') or (request.json.get('username') if request.is_json else '')
@@ -17,7 +17,7 @@ def home():
         android_id = request.form.get('android_id') or request.form.get('hwid') or (request.json.get('android_id') if request.is_json else '')
         
         if not username or not password:
-            return jsonify({"status": "error", "message": "Username lan password wajib diisi!"})
+            return jsonify({"status": "error", "message": "Username dan password wajib diisi!"})
         
         headers = {
             "apikey": SUPABASE_KEY,
@@ -25,14 +25,16 @@ def home():
             "Content-Type": "application/json"
         }
         
+        # Kirim sebagai single JSON object ke fungsi login_user
         rpc_payload = {
-            "p_username": username,
-            "p_password": password,
-            "p_android_id": android_id if android_id else "UNKNOWN_DEVICE"
+            "payload": {
+                "username": username,
+                "password": password,
+                "device_id": android_id if android_id else "UNKNOWN_DEVICE"
+            }
         }
         
-        resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/check_and_bind_user", headers=headers, json=rpc_payload, timeout=10)
-
+        resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/login_user", headers=headers, json=rpc_payload, timeout=10)
         
         if resp.status_code != 200:
             return jsonify({"status": "error", "message": f"Database RPC Error: {resp.text}"})
@@ -45,3 +47,4 @@ def home():
 
 if __name__ == '__main__':
     app.run()
+
