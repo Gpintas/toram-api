@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 import requests
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -10,12 +9,12 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'GET':
-        return jsonify({"status": "online", "message": "API Supabase Auth Aktif!"})
+        return jsonify({"status": "online", "message": "API Supabase RPC Aktif!"})
     
     try:
         username = request.form.get('username') or (request.json.get('username') if request.is_json else '')
         password = request.form.get('password') or (request.json.get('password') if request.is_json else '')
-        android_id = request.form.get('android_id') or (request.json.get('android_id') if request.is_json else '')
+        android_id = request.form.get('android_id') or request.form.get('hwid') or (request.json.get('android_id') if request.is_json else '')
         
         if not username or not password:
             return jsonify({"status": "error", "message": "Username dan password wajib diisi!"})
@@ -23,60 +22,23 @@ def home():
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
+            "Content-Type": "application/json"
         }
         
-        # Ambil data user dari Supabase
-        resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", headers=headers, timeout=10)
+        # Kirim data ke Supabase RPC function
+        rpc_payload = {
+            "p_username": username,
+            "p_password": password,
+            "p_device_id": android_id if android_id else "UNKNOWN_DEVICE"
+        }
+        
+        resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/verify_and_bind_user", headers=headers, json=rpc_payload, timeout=10)
         
         if resp.status_code != 200:
-            return jsonify({"status": "error", "message": "Gagal terhubung ke database!"})
+            return jsonify({"status": "error", "message": f"Database RPC Error: {resp.text}"})
             
-        users = resp.json()
-        if not users or len(users) == 0:
-            return jsonify({"status": "error", "message": "Username tidak terdaftar!"})
-            
-        user = users[0]
-        db_id = user.get("id")
-        db_password = user.get("password")
-        db_status = user.get("status", 1)
-        db_android_id = user.get("android_id") or user.get("hwid")
-        db_expired_at = user.get("expired_at")
-        
-        if db_status != 1:
-            return jsonify({"status": "error", "message": "Akun Anda telah dinonaktifkan atau diblokir!"})
-            
-        if password != db_password:
-            return jsonify({"status": "error", "message": "Password salah!"})
-            
-        # Cek Masa Aktif
-        if db_expired_at:
-            try:
-                expire_date = datetime.fromisoformat(db_expired_at.replace('Z', ''))
-                if datetime.now() > expire_date:
-                    return jsonify({"status": "error", "message": "Masa aktif akun Anda telah kedaluwarsa!"})
-            except Exception:
-                pass
-                
-        # Logika Paksa Update ke Kolom android_id DAN hwid Sekaligus
-        if not db_android_id or str(db_android_id).strip() == "" or str(db_android_id).lower() == "null":
-            if android_id:
-                update_data = {
-                    "android_id": android_id,
-                    "hwid": android_id
-                }
-                patch_resp = requests.patch(
-                    f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
-                    headers=headers,
-                    json=update_data,
-                    timeout=10
-                )
-                print("PATCH Response:", patch_resp.text) # Cek log Vercel jika masih gagal
-        elif db_android_id != android_id and android_id:
-            return jsonify({"status": "error", "message": "Perangkat tidak dikenali! Akun terkunci di perangkat lain."})
-            
-        return jsonify({"status": "success", "message": "Login Berhasil!"})
+        result = resp.json()
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({"status": "error", "message": "API Error: " + str(e)})
