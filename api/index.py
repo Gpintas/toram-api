@@ -1,23 +1,18 @@
 from flask import Flask, request, jsonify
-import psycopg2
+import requests
+import os
 
 app = Flask(__name__)
 
-# Menggunakan Pooler Connection (Port 6543) khusus untuk Serverless/Vercel
-def get_db_connection():
-    conn = psycopg2.connect(
-        host="aws-0-ap-southeast-1.pooler.supabase.com",
-        database="postgres",
-        user="postgres.clyrfxouashaidcnbypt",
-        password="Admipoel314#",
-        port=6543
-    )
-    return conn
+# Konfigurasi Supabase REST API (Ganti dengan Project URL dan Anon Key kamu jika perlu)
+SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
+# Supabase Anon/Service Role Key (bisa diambil dari Project Settings > API)
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "ISI_ANON_KEY_SUPABASE_DISINI")
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'GET':
-        return jsonify({"status": "online", "message": "API Supabase Auth Aktif!"})
+        return jsonify({"status": "online", "message": "API Supabase REST Aktif!"})
     
     try:
         username = request.form.get('username') or request.json.get('username') if request.is_json else request.form.get('username')
@@ -27,45 +22,49 @@ def home():
         if not username or not password:
             return jsonify({"status": "error", "message": "Username dan password wajib diisi!"})
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json"
+        }
         
-        cursor.execute("SELECT id, password, status, android_id, max_devices FROM users WHERE username = %s", (username,))
-        user = cursor.fetchone()
+        # Query ke Supabase pakai REST API (GET /users?username=eq.xxx)
+        resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", headers=headers, timeout=10)
         
-        if not user:
-            cursor.close()
-            conn.close()
+        if resp.status_code != 200:
+            return jsonify({"status": "error", "message": "Gagal terhubung ke database Supabase!"})
+            
+        users = resp.json()
+        if not users or len(users) == 0:
             return jsonify({"status": "error", "message": "Username tidak terdaftar!"})
             
-        db_id, db_password, db_status, db_android_id, max_devices = user
+        user = users[0]
+        db_id = user.get("id")
+        db_password = user.get("password")
+        db_status = user.get("status", 1)
+        db_android_id = user.get("android_id", "")
         
         if db_status != 1:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Akun Anda telah dinonaktifkan atau diblokir!"})
             
         if password != db_password:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Password salah!"})
             
+        # Logika HWID Binding via REST API (PATCH)
         if not db_android_id or db_android_id == "" or db_android_id == "NONE":
-            cursor.execute("UPDATE users SET android_id = %s WHERE id = %s", (android_id, db_id))
-            conn.commit()
+            update_resp = requests.patch(
+                f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
+                headers=headers,
+                json={"android_id": android_id},
+                timeout=10
+            )
         elif db_android_id != android_id:
-            cursor.close()
-            conn.close()
             return jsonify({"status": "error", "message": "Perangkat tidak dikenali! Akun terkunci di perangkat lain."})
             
-        cursor.close()
-        conn.close()
-        
         return jsonify({"status": "success", "message": "Login Berhasil!"})
         
     except Exception as e:
-        # Menampilkan pesan error asli secara mendetail ke game
-        return jsonify({"status": "error", "message": "DB Error: " + str(e)})
+        return jsonify({"status": "error", "message": "API Error: " + str(e)})
 
 if __name__ == '__main__':
     app.run()
