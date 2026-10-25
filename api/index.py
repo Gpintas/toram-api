@@ -1,9 +1,10 @@
 from flask import Flask, request, Response
-import requests
+import urllib.request
+import urllib.parse
 
 app = Flask(__name__)
 
-BRIDGE_URL = "http://permanamods.byethost7.com/bridge.php"  # Ganti dengan URL domain hosting Byethost kamu
+BRIDGE_URL = "http://permanamods.byethost7.com/bridge.php"
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -12,15 +13,18 @@ def home():
     
     try:
         api_key = request.headers.get('X-API-Key', '')
-        headers = {
-            'X-API-Key': api_key,
-            'User-Agent': 'VercelBridge/1.0'
-        }
         
-        # Teruskan data POST dari game ke bridge.php di Byethost
-        resp = requests.post(BRIDGE_URL, data=request.form, headers=headers, timeout=15)
-        return Response(resp.content, status=resp.status_code, content_type='application/json')
+        # Ambil data POST dari game, lalu encode untuk dikirim ke bridge.php
+        post_data = urllib.parse.urlencode(request.form).encode('utf-8')
         
+        req = urllib.request.Request(BRIDGE_URL, data=post_data, method='POST')
+        req.add_header('X-API-Key', api_key)
+        req.add_header('User-Agent', 'VercelBridge/1.0')
+        
+        with urllib.request.urlopen(req, timeout=15) as response:
+            resp_body = response.read()
+            return Response(resp_body, status=response.status, content_type='application/json')
+            
     except Exception as e:
         return {"status": "error", "message": "Bridge Error: " + str(e)}
 
