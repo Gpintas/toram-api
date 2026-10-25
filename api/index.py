@@ -63,8 +63,8 @@ def home():
         
         return jsonify({"status": "success", "message": "Login Berhasil!"})
         
-    except Exception as e:
-        return jsonify({"status": "error", "message": "Database Error: " + str(e)})
+        except Exception as e:
+        return jsonify({"status": "error", "message": "DB Error: " + str(e)})
 
 if __name__ == '__main__':
     app.run()
