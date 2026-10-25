@@ -11,6 +11,12 @@ db_config = {
 }
 
 class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "online", "message": "API Toram Mod aktif!"}).encode('utf-8'))
+
     def do_POST(self):
         try:
             content_length = int(self.headers.get('Content-Length', 0))
@@ -19,10 +25,7 @@ class handler(BaseHTTPRequestHandler):
             
             api_key = self.headers.get('X-API-Key')
             if api_key != 'my_Secure_Api_Key_@2026!':
-                self.send_response(401)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": "Unauthorized API Access!"}).encode('utf-8'))
+                self.send_json({"status": "error", "message": "Unauthorized API Access!"}, 401)
                 return
 
             username = params.get('username', [''])[0]
@@ -81,10 +84,10 @@ class handler(BaseHTTPRequestHandler):
             conn.close()
 
         except Exception as e:
-            self.send_json({"status": "error", "message": str(e)})
+            self.send_json({"status": "error", "message": "Server Error: " + str(e)})
 
-    def send_json(self, data):
-        self.send_response(200)
+    def send_json(self, data, code=200):
+        self.send_response(code)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
