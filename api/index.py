@@ -1,11 +1,10 @@
 from flask import Flask, request, jsonify
 import requests
-import os
 
 app = Flask(__name__)
 
 SUPABASE_URL = "https://clyrfxouashaidcnbypt.supabase.co"
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_Izr8_TZCTjUjvXh_NwnWTQ_A-MlUWss")
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseXJmeG91YXNoYWlkY25ieXB0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjkzNTMwMywiZXhwIjoyMTA4NTExMzAzfQ.0VURelvbUbVB4fmt1f5r2tbbC5EomPrbMQTtAFPzoCo"
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -27,7 +26,6 @@ def home():
             "Prefer": "return=representation"
         }
         
-        # Ambil data user via REST API
         resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", headers=headers, timeout=10)
         
         if resp.status_code != 200:
@@ -49,9 +47,7 @@ def home():
         if password != db_password:
             return jsonify({"status": "error", "message": "Password salah!"})
             
-        # Logika Device Binding / HWID
         if not db_android_id or db_android_id == "" or db_android_id == "NULL" or db_android_id is None:
-            # Update android_id perangkat saat ini jika masih kosong
             requests.patch(
                 f"{SUPABASE_URL}/rest/v1/users?id=eq.{db_id}",
                 headers=headers,
