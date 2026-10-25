@@ -12,14 +12,18 @@ class handler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length)
         
+        req_data = {}
         try:
+            # Coba decode sebagai JSON
             req_data = json.loads(body.decode('utf-8'))
         except Exception:
-            self.send_response(400)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"status": "error", "message": "Invalid JSON"}).encode())
-            return
+            # Jika dikirim bukan format JSON (misal form-data atau teks biasa), parse manual
+            try:
+                from urllib.parse import parse_qs
+                parsed = parse_qs(body.decode('utf-8'))
+                req_data = {k: v[0] for k, v in parsed.items()}
+            except Exception:
+                req_data = {}
 
         client_api_key = self.headers.get('X-API-Key')
         if client_api_key != API_KEY:
@@ -39,17 +43,25 @@ class handler(BaseHTTPRequestHandler):
         response_data = {"status": "error", "message": "Action tidak dikenali"}
 
         try:
-            # 1. MENU LOGIN GAME & BIND DEVICE
+            # 1. LOGIN GAME (Mendukung format dari C++ Mod Menu maupun Tes Termux)
             if not action or action == "login":
+                # Tangkap parameter dari berbagai kemungkinan key name
+                username = req_data.get("username")
+                password = req_data.get("password")
+                device_id = req_data.get("device_id") or req_data.get("hwid") or "ANDROID_DEVICE_DEFAULT"
+
                 rpc_payload = {
                     "payload": {
-                        "username": req_data.get("username"),
-                        "password": req_data.get("password"),
-                        "device_id": req_data.get("device_id")
+                        "username": username,
+                        "password": password,
+                        "device_id": device_id
                     }
                 }
                 resp = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/login_user", headers=headers, json=rpc_payload, timeout=10)
-                response_data = resp.json()
+                try:
+                    response_data = resp.json()
+                except Exception:
+                    response_data = {"status": "error", "message": resp.text}
 
             # 2. ADMIN: REGISTER AKUN BARU
             elif action == "register":
@@ -58,7 +70,6 @@ class handler(BaseHTTPRequestHandler):
                 days = int(req_data.get("days", 30))
                 max_dev = int(req_data.get("max_dev", 1))
                 
-                # Hitung expired_at jika days > 0
                 expired_iso = None
                 if days > 0:
                     import datetime
@@ -93,7 +104,7 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     response_data = {"status": "error", "message": f"Gagal reset: {resp.text}"}
 
-            # 4. ADMIN: EXTEND / PERPANJANG MASA AKTIF
+            # 4. ADMIN: EXTEND MASA AKTIF
             elif action == "extend":
                 username = req_data.get("username")
                 days = int(req_data.get("days", 30))
@@ -127,7 +138,7 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     response_data = {"status": "error", "message": f"Gagal update slot: {resp.text}"}
 
-            # 6. ADMIN: LIST / CEK SEMUA AKUN
+            # 6. ADMIN: LIST AKUN
             elif action == "list":
                 resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=username,status,expired_at,max_dev,hwid", headers=headers, timeout=10)
                 if resp.status_code == 200:
