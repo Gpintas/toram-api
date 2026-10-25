@@ -14,10 +14,8 @@ class handler(BaseHTTPRequestHandler):
         
         req_data = {}
         try:
-            # Coba decode sebagai JSON
             req_data = json.loads(body.decode('utf-8'))
         except Exception:
-            # Jika dikirim bukan format JSON (misal form-data atau teks biasa), parse manual
             try:
                 from urllib.parse import parse_qs
                 parsed = parse_qs(body.decode('utf-8'))
@@ -43,9 +41,8 @@ class handler(BaseHTTPRequestHandler):
         response_data = {"status": "error", "message": "Action tidak dikenali"}
 
         try:
-            # 1. LOGIN GAME (Mendukung format dari C++ Mod Menu maupun Tes Termux)
+            # 1. LOGIN GAME (Via RPC Supabase)
             if not action or action == "login":
-                # Tangkap parameter dari berbagai kemungkinan key name
                 username = req_data.get("username")
                 password = req_data.get("password")
                 device_id = req_data.get("device_id") or req_data.get("hwid") or "ANDROID_DEVICE_DEFAULT"
@@ -82,7 +79,8 @@ class handler(BaseHTTPRequestHandler):
                     "status": 1,
                     "max_dev": max_dev,
                     "expired_at": expired_iso,
-                    "hwid": ""
+                    "hwid": "",
+                    "android_id": ""
                 }
                 resp = requests.post(f"{SUPABASE_URL}/rest/v1/users", headers=headers, json=new_user, timeout=10)
                 if resp.status_code in [200, 201]:
@@ -90,21 +88,21 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     response_data = {"status": "error", "message": f"Gagal register: {resp.text}"}
 
-            # 3. ADMIN: RESET HWID
+            # 3. ADMIN: FULL RESET HWID & ANDROID_ID
             elif action == "reset":
                 username = req_data.get("username")
                 resp = requests.patch(
                     f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}",
                     headers=headers,
-                    json={"hwid": ""},
+                    json={"hwid": "", "android_id": ""},
                     timeout=10
                 )
                 if resp.status_code in [200, 204]:
-                    response_data = {"status": "success", "message": f"HWID akun {username} berhasil di-reset!"}
+                    response_data = {"status": "success", "message": f"Full Reset (HWID & Android ID) akun {username} berhasil!"}
                 else:
                     response_data = {"status": "error", "message": f"Gagal reset: {resp.text}"}
 
-                        # 4. ADMIN: EXTEND MASA AKTIF
+            # 4. ADMIN: EXTEND MASA AKTIF
             elif action in ["extend", "extend_custom"]:
                 username = req_data.get("username")
                 expired_iso = req_data.get("expired_at")
@@ -141,9 +139,9 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     response_data = {"status": "error", "message": f"Gagal update slot: {resp.text}"}
 
-            # 6. ADMIN: LIST AKUN
+            # 6. ADMIN: LIST AKUN (Menampilkan hwid dan android_id)
             elif action == "list":
-                resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=username,status,expired_at,max_dev,hwid", headers=headers, timeout=10)
+                resp = requests.get(f"{SUPABASE_URL}/rest/v1/users?select=username,status,expired_at,max_dev,hwid,android_id", headers=headers, timeout=10)
                 if resp.status_code == 200:
                     response_data = {"status": "success", "data": resp.json()}
                 else:
