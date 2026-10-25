@@ -104,13 +104,16 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     response_data = {"status": "error", "message": f"Gagal reset: {resp.text}"}
 
-            # 4. ADMIN: EXTEND MASA AKTIF
-            elif action == "extend":
+                        # 4. ADMIN: EXTEND MASA AKTIF
+            elif action in ["extend", "extend_custom"]:
                 username = req_data.get("username")
-                days = int(req_data.get("days", 30))
-                import datetime
-                exp_date = datetime.datetime.utcnow() + datetime.timedelta(days=days)
-                expired_iso = exp_date.isoformat() + "Z"
+                expired_iso = req_data.get("expired_at")
+                
+                if not expired_iso:
+                    days = int(req_data.get("days", 30))
+                    import datetime
+                    exp_date = datetime.datetime.utcnow() + datetime.timedelta(days=days)
+                    expired_iso = exp_date.isoformat() + "Z"
 
                 resp = requests.patch(
                     f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}",
@@ -119,7 +122,7 @@ class handler(BaseHTTPRequestHandler):
                     timeout=10
                 )
                 if resp.status_code in [200, 204]:
-                    response_data = {"status": "success", "message": f"Masa aktif {username} diperpanjang {days} hari!"}
+                    response_data = {"status": "success", "message": f"Masa aktif {username} berhasil diperpanjang!"}
                 else:
                     response_data = {"status": "error", "message": f"Gagal extend: {resp.text}"}
 
