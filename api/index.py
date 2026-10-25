@@ -3,14 +3,14 @@ import psycopg2
 
 app = Flask(__name__)
 
-# Koneksi menggunakan parameter terpisah agar lebih stabil di Vercel
+# Menggunakan Pooler Connection (Port 6543) khusus untuk Serverless/Vercel
 def get_db_connection():
     conn = psycopg2.connect(
-        host="db.clyrfxouashaidcnbypt.supabase.co",
+        host="aws-0-ap-southeast-1.pooler.supabase.com", # atau host pooler dari dashboard kamu
         database="postgres",
-        user="postgres",
+        user="postgres.clyrfxouashaidcnbypt", # format user pooler supabase
         password="Admipoel314#",
-        port=5432
+        port=6543
     )
     return conn
 
