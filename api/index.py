@@ -6,9 +6,9 @@ app = Flask(__name__)
 # Menggunakan Pooler Connection (Port 6543) khusus untuk Serverless/Vercel
 def get_db_connection():
     conn = psycopg2.connect(
-        host="aws-0-ap-southeast-1.pooler.supabase.com", # atau host pooler dari dashboard kamu
+        host="aws-0-ap-southeast-1.pooler.supabase.com",
         database="postgres",
-        user="postgres.clyrfxouashaidcnbypt", # format user pooler supabase
+        user="postgres.clyrfxouashaidcnbypt",
         password="Admipoel314#",
         port=6543
     )
@@ -63,7 +63,8 @@ def home():
         
         return jsonify({"status": "success", "message": "Login Berhasil!"})
         
-        except Exception as e:
+    except Exception as e:
+        # Menampilkan pesan error asli secara mendetail ke game
         return jsonify({"status": "error", "message": "DB Error: " + str(e)})
 
 if __name__ == '__main__':
